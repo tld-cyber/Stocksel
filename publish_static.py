@@ -76,13 +76,20 @@ def do_prices(rows, meta):
 
 
 def build(rows, meta):
-    keep = rows[:900] + rows[-300:]      # ship the two ends, not all ~6,200 — the middle is unreachable
-    meta = dict(meta, shown=len(keep))
+    # Ship the two ends as SEPARATE arrays. Concatenating them into one list was a real bug: the
+    # page renders a single array in order, so after the volume filter shrank the head to 223 rows
+    # the tail began at row 224 and D% leapt 4.4% -> 206.2% mid-table. Nothing marked the boundary,
+    # so it read as corrupt data rather than as the omission it was — every name between those two
+    # values simply is not in the file. Separate pools make the seam impossible: each view draws
+    # only from the end it is actually about.
+    lo, hi = rows[:900], rows[-300:]
+    meta = dict(meta, shown=len(lo) + len(hi))
     html = open(os.path.join(HERE, "frontend", "index.html"), encoding="utf-8").read()
     assert BOOTSTRAP in html, "frontend bootstrap block moved — update BOOTSTRAP to match"
     html = html.replace(BOOTSTRAP, (
         "// Static snapshot: data is baked in, there is no backend to call.\n"
-        f"ROWS = {json.dumps(keep, separators=(',', ':'))};\n"
+        f"ROWS = {json.dumps(lo, separators=(',', ':'))};\n"
+        f"ROWS_HI = {json.dumps(hi, separators=(',', ':'))};\n"
         f"setMeta({json.dumps(meta)}, {json.dumps(meta['generated'])});\n"
         "$('status').hidden = true;\n"
         "$('refresh').remove();   // no backend behind it — a dead control is worse than none\n"

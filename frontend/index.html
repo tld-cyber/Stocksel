@@ -174,6 +174,10 @@
 <script>
 const $ = id => document.getElementById(id);
 let ROWS = [], META = null, mode = "lo", timer = null;
+// Set only by the static build, which ships the two ends of the distribution as separate
+// pools. Null in the desktop app, where the backend serves the whole distribution and the
+// far-above names are simply the tail of one continuous list.
+let ROWS_HI = null;
 
 const money = v => v >= 1000 ? v.toLocaleString("en-US",{maximumFractionDigits:0})
                  : (Math.round(v*100)/100).toFixed(2).replace(/\.00$/,"");
@@ -187,9 +191,14 @@ const shade = d => d < 0 ? ' class="shade under"' : d <= 0.05 ? ' class="shade a
 
 function view(){
   const minV = +$("minvol").value, hideF = $("hideflag").checked;
-  let rows = ROWS.filter(r => !r.f && r.v >= minV && (!hideF || !r.s));
+  // Each mode draws from the end it is about. Filtering one concatenated array instead put the
+  // far-above names directly after the near-the-floor ones, producing a 4.4% -> 206% cliff mid-table
+  // with nothing to indicate the middle of the distribution was missing entirely.
+  const src = (mode === "hi" && ROWS_HI) ? ROWS_HI : ROWS;
+  let rows = src.filter(r => !r.f && r.v >= minV && (!hideF || !r.s));
   if (mode === "br") rows = rows.filter(r => r.d < 0);
-  if (mode === "hi") rows = rows.slice().sort((a,b) => b.d - a.d);   // pool is already D ascending
+  if (mode === "hi") rows = rows.slice().sort((a,b) => b.d - a.d);
+  else if (ROWS_HI) rows = rows.filter(r => r.d <= 100);   // static build: the head only reaches so far
   return rows;
 }
 
