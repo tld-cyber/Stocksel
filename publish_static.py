@@ -119,7 +119,10 @@ def build(rows, meta):
         f"setMeta({json.dumps(meta)}, {json.dumps(meta['generated'])});\n"
         "$('status').hidden = true;\n"
         "$('refresh').remove();   // no backend behind it — a dead control is worse than none\n"
-        "render();"))
+        "render();\n"
+        "// The deployed file is rebuilt every 15 minutes; poll for that and offer a reload.\n"
+        "checkForUpdate();\n"
+        "setInterval(checkForUpdate, 3 * 60 * 1000);"))
     html = html.replace("<title>Stocksel — 52-week floor</title>",
                         "<title>Stocksel — 52-week floor (snapshot)</title>")
     os.makedirs(os.path.dirname(OUT), exist_ok=True)

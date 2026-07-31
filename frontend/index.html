@@ -45,6 +45,9 @@
   .stamp{margin-left:auto; text-align:right; font-size:11px; color:var(--muted);
          display:flex; flex-direction:column; gap:3px; align-items:flex-end;}
   .stamp b{color:var(--ink-2); font-weight:600;}
+  .upd{font-family:inherit; font-size:11px; font-weight:600; cursor:pointer;
+    color:#fff; background:var(--accent); border:0; border-radius:99px; padding:3px 10px;}
+  .upd:hover{filter:brightness(1.08);}
 
   .filters{display:flex; flex-wrap:wrap; align-items:center; gap:8px 13px;
     margin:18px 0 11px; padding:11px 13px; background:var(--surface);
@@ -138,6 +141,7 @@
     </div>
     <div class="stamp ui">
       <span>prices <b id="refreshed">—</b></span>
+      <button type="button" id="upd" class="upd" hidden>newer prices available — reload</button>
     </div>
   </header>
 
@@ -389,6 +393,23 @@ async function refreshPrices(){
   } catch(e){ /* transient — the timer will try again */ }
   btn.disabled = false; btn.textContent = "refresh prices";
 }
+
+// The page cannot refresh its own numbers — the data is baked in and there is no backend to ask.
+// But the FILE behind this URL is rebuilt every 15 minutes, so a tab left open goes quietly stale
+// while still looking current, which is the worst of both. A HEAD request is a few hundred bytes
+// and tells us whether the deployed file has changed; if it has, offer a reload rather than forcing
+// one — reloading under someone mid-read would reorder the table and reset their filters.
+let _seenLM = null;
+async function checkForUpdate(){
+  try{
+    const r = await fetch(location.href, { method: "HEAD", cache: "no-store" });
+    const lm = r.headers.get("last-modified");
+    if (!lm) return;                 // no header (file://, or a host that omits it) — stay quiet
+    if (_seenLM === null){ _seenLM = lm; return; }
+    if (lm !== _seenLM) $("upd").hidden = false;
+  }catch(e){ /* offline or opened from disk — nothing useful to say */ }
+}
+$("upd").addEventListener("click", () => location.reload());
 
 ["topn","minvol","hideflag","within","q"].forEach(id => $(id).addEventListener("input", render));
 [["mLo","lo"],["mHi","hi"]].forEach(([id,m]) => $(id).addEventListener("click", () => {
