@@ -14,6 +14,7 @@
     --band-at-bg:#E09A32;    --band-at-fg:#33220A;
     --band-near-bg:#F7D9D5;  --band-near-fg:#8A2019;
     --spark:#3B6FB0;
+    --d-neg:#B4342B; --d-near:#C4562C;
   }
   @media (prefers-color-scheme:dark){
     :root{
@@ -25,6 +26,7 @@
       --band-at-bg:#7A5518;    --band-at-fg:#FBD9A0;
       --band-near-bg:#3A1E1B;  --band-near-fg:#F0A79E;
       --spark:#6FA3DC;
+      --d-neg:#F0736A; --d-near:#E29063;
     }
   }
   *{box-sizing:border-box;}
@@ -76,7 +78,7 @@
     border-bottom:1px solid var(--rule-strong);}
   thead th.l{text-align:left;}
   thead th.spk{width:184px;}
-  td.spk{padding:2px 12px 0 6px;}
+  td.spk{padding:2px 12px 0 6px; cursor:help;}
   td.spk svg{display:block;}
   thead th.px{width:10ch;}    /* longest real value is 8 chars ($391,992), plus a space of air */
   thead th.w4{width:5.5ch;}   /* When / tch: 3 digits plus a unit at most */
@@ -97,8 +99,8 @@
   td.shade{font-weight:700; border-radius:3px;}
   td.shade.under{background:var(--band-under-bg); color:var(--band-under-fg);}
   td.shade.near {background:var(--band-near-bg);  color:var(--band-near-fg);}
-  td.d.pos{color:var(--band-under-bg);}
-  @media (prefers-color-scheme:dark){ td.d.pos{color:var(--band-under-fg);} }
+  td.d.neg {color:var(--d-neg);}    /* through the floor */
+  td.d.near{color:var(--d-near);}   /* inside the selected range */
   sub,sup{font-size:.72em; font-weight:600;}
   .flag.bad{border-color:var(--band-under-bg); color:var(--band-under-bg);}
   .flag{display:inline-block; margin-left:4px; padding:1px 4px; border-radius:99px;
@@ -170,7 +172,7 @@
     <table>
       <thead><tr>
         <th class="l rk">#</th><th class="l">Ticker</th>
-        <th class="spk"></th>
+        <th class="spk l">52-week trace</th>
         <th class="px">X<sub>now</sub></th><th class="px">X<sub>high</sub></th>
         <th class="sep px">X<sub>low</sub></th><th class="w4">When</th><th class="w4">tch</th><th class="w5">D%</th>
         <th class="px">X<sub>low</sub><sup>&minus;5</sup></th><th class="px">X<sub>low</sub><sup>&minus;10</sup></th>
@@ -191,16 +193,21 @@
     <li><b>X<sub>low</sub></b> is the lowest price it traded during the 52 weeks ending last Friday.
       The current week is deliberately excluded, which is what allows the price to fall through the
       floor and D% to go negative.</li>
-    <li><b>When</b> is the number of days since that low was set. A floor months old has held; one set
-      days ago belongs to a stock that is probably still falling.</li>
-    <li><b>tch</b> counts the weeks in which the price came back inside the selected range. It is the
-      honest measure of whether a level means anything: a floor touched once was never defended, while
-      one touched a dozen times is a level buyers keep stepping in at.</li>
-    <li><b>D%</b> is how far X<sub>now</sub> sits above X<sub>low</sub>, shown in red at or above the
-      floor. A negative value means the stock has broken through it.</li>
+    <li><b>When</b> is the number of days since that low was set. A low from months ago is one the stock
+      has stayed above since. A low from a few days ago usually means the stock is still going down and
+      simply has not stopped yet.</li>
+    <li><b>tch</b> counts the weeks in which the price came back within <b id="tchpct">10%</b> of the
+      floor — the range set by <b>within</b>, not a fixed figure, so changing it changes this column.
+      A count of 1 means the stock reached that price once and never went back — the low was a
+      one-off. A high count means it has dropped to that price (within the selected range) and
+      recovered again and again, so the price is one where people have repeatedly been willing to
+      buy.</li>
+    <li><b>D%</b> is how far X<sub>now</sub> sits above X<sub>low</sub>. It is coloured on the same
+      rule as X<sub>now</sub>: strong red once the stock has broken through the floor, softer red
+      while it sits inside the selected range, and plain beyond it.</li>
     <li><b>X<sub>low</sub><sup>&minus;5</sup></b>, <b>X<sub>low</sub><sup>&minus;10</sup></b> and
-      <b>X<sub>low</sub><sup>&minus;20</sup></b> are the prices 5, 10 and 20% below the floor. They are
-      downside markers — where a breakdown goes next, not targets to buy at.</li>
+      <b>X<sub>low</sub><sup>&minus;20</sup></b> are the prices 5, 10 and 20% below the floor. They show
+      how far the stock would fall if it keeps dropping — they are not prices to aim to buy at.</li>
     <li><b>Vol/day</b> is the typical daily volume, taken as the median week divided by five rather
       than a single session, which is too easily distorted by whatever news moved the stock.</li>
   </ul>
@@ -209,14 +216,15 @@
     <p><b>Splits are adjusted for — but not reliably.</b> Prices are split-adjusted, so a reverse
     split normally lines history up with today. Some are missed: those show a 14&ndash;86&times; jump
     between consecutive weeks, which no real move produces, and the row is tagged <b>CHECK LOW</b>.</p>
-    <p><b>BROKE</b> = trading under a floor that had held: mid-collapse, not near support.
+    <p><b>BROKE</b> = the stock is now cheaper than its lowest price of the past year. It is falling,
+    not steadying.
     <b>52W</b> = a recent listing whose window is shorter. <b>THIN</b> = under 50k shares a day.</p>
     <p><b>The controls above the table</b> — every one narrows what is listed; none of them changes
     a stock's numbers.</p>
 
     <ul class="fdesc">
-      <li><b>NEAR / FAR</b> — which end of the distribution. NEAR lists stocks at, near, or through
-        the floor; FAR lists those furthest above it. Names trading under the floor stay in NEAR,
+      <li><b>NEAR / FAR</b> — which end of the list. NEAR shows stocks close to, at, or below their
+        lowest price of the year; FAR shows the ones that have climbed furthest away from it. Names trading under the floor stay in NEAR,
         tagged <b>BROKE</b> and shaded darker.</li>
       <li><b>ticker</b> — jumps straight to one stock. It deliberately ignores the <b>within</b>
         band, so searching a name that sits far above its floor still finds it rather than returning
@@ -226,8 +234,9 @@
         listed, the red shading, and <b>tch</b>, which counts the weeks price came back inside that
         same range. Widening the band therefore raises the touch count. Nothing is fixed at 5%.</li>
       <li><b>show top</b> — how many rows to draw, in the current sort order.</li>
-      <li><b>min vol/day</b> — drops names that barely trade. Below roughly 100k shares a day a D%
-        is arithmetic rather than demand, since a handful of shares can move the price.</li>
+      <li><b>min vol/day</b> — hides stocks that hardly trade. When only a few thousand shares change
+        hands in a day, a small trade can move the price a long way, so the percentages stop meaning
+        much.</li>
       <li><b>hide CHECK LOW</b> — on by default. Hides rows whose price history is on a different
         share basis to their current price, usually an unadjusted split, where D% cannot be trusted.</li>
     </ul>
@@ -273,7 +282,12 @@ function spark(r){
   let pts = "";
   for (let i = 0; i < n; i++) pts += x(i).toFixed(1) + "," + y(_A.indexOf(r.sp[i])).toFixed(1) + " ";
   const li = Math.min(r.si || 0, n - 1);
-  return '<svg width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '" aria-hidden="true">'
+  // The scan reads weekly bars, so the low is known to the week and not the day. "week of" says
+  // exactly that; a bare date would imply a precision the data does not carry. Deliberately not
+  // repeating the touch count — that column is already on screen a few pixels away.
+  const tip = r.xd ? "Low set in the week of " + r.xd : "";
+  return '<svg width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '" role="img">'
+       + '<title>' + tip + '</title>'
        + '<polyline points="' + pts.trim() + '" fill="none" stroke="var(--spark)" stroke-width="1.3" '
        + 'stroke-linejoin="round" stroke-linecap="round"/>'
        + '<circle cx="' + x(li).toFixed(1) + '" cy="' + y(_A.indexOf(r.sp[li])).toFixed(1) + '" r="2.6" '
@@ -281,6 +295,8 @@ function spark(r){
 }
 const shade = d => d < 0 ? ' class="shade under"'
                  : d <= +$("within").value ? ' class="shade near"' : '';
+// Same three states as shade(), as text colour instead of a fill — so D% and Xnow always agree.
+const dcls = d => d < 0 ? ' neg' : d <= +$("within").value ? ' near' : '';
 
 function view(){
   const minV = +$("minvol").value, hideF = $("hideflag").checked;
@@ -308,6 +324,7 @@ function render(){
   let n = parseInt($("topn").value, 10); if (!Number.isFinite(n) || n < 1) n = 1;
   const shown = rows.slice(0, n);
   $("fcount").textContent = rows.length.toLocaleString("en-US") + " pass filters";
+  $("tchpct").textContent = $("within").value + "%";
   $("tb").innerHTML = shown.map((r,i) => {
     // Xnow above the year's ceiling means the price and the history are on different share bases:
     // a split the source did not apply to its own weekly bars. A genuine new 52-week high also puts
@@ -329,7 +346,7 @@ function render(){
       + '<td class="sep">' + money(r.x) + '</td>'
       + '<td class="held">' + r.hd + 'd</td>'
       + '<td class="touch' + (tch(r) <= 1 ? ' once' : '') + '">' + tch(r) + '</td>'
-      + '<td class="d' + (r.d >= 0 ? ' pos' : '') + '">' + pct(r.d) + '</td>'
+      + '<td class="d' + dcls(r.d) + '">' + pct(r.d) + '</td>'
       + '<td class="below">' + money(r.x * 0.95) + '</td>'
       + '<td class="below">' + money(r.x * 0.90) + '</td>'
       + '<td class="below">' + money(r.x * 0.80) + '</td>'
