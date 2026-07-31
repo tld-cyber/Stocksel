@@ -3,8 +3,9 @@ name: Refresh prices
 # The fast half. Reads the committed floors, fetches current prices for the two ends that the page
 # actually renders, rebuilds the HTML and deploys it to Pages. ~1 minute per run.
 #
-# Deploys rather than commits: pushing a 160 KB file every 15 minutes would bury the repo history
-# under hundreds of machine commits a week. actions/deploy-pages publishes the artifact directly.
+# Commits the built page. That does add a commit per refresh, which is the price of not depending on
+# GitHub's Actions scheduler — it never fired once across a full trading day here, while every manual
+# and local run worked. The Mac's launchd job pushes the same file, so either trigger publishes.
 #
 # Schedule covers 13:00-20:59 UTC Mon-Fri, which is 09:00-16:59 ET in summer and 08:00-15:59 in
 # winter — the market session under either, since cron has no notion of daylight saving. The odd
@@ -20,9 +21,7 @@ on:
     types: [completed]
 
 permissions:
-  contents: read
-  pages: write
-  id-token: write
+  contents: write
 
 # Never let two deploys race; skip a queued run rather than stack them, since the next one is only
 # 15 minutes away and would carry newer prices anyway.
@@ -33,9 +32,6 @@ concurrency:
 jobs:
   refresh:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deploy.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
 
@@ -50,9 +46,14 @@ jobs:
       # scan on its own rather than failing — the first deploy after setup still produces a page.
       - run: python publish_static.py --prices
 
-      - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: site
-      - id: deploy
-        uses: actions/deploy-pages@v4
+      # Commit the built page rather than deploying an artifact: Pages serves docs/ from the branch,
+      # so a push IS the publish. Same mechanism the Mac's launchd job uses, so whichever trigger
+      # fires, the result is identical.
+      - name: Commit the page
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add docs/
+          git diff --staged --quiet || git commit -m "prices $(date -u '+%Y-%m-%d %H:%M UTC')"
+          git pull --rebase --autostash -q origin main || true
+          git push origin main

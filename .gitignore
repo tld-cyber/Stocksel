@@ -16,5 +16,6 @@ dist/
 # data/floors.json IS committed on purpose so the fast price job can read it.
 site/
 stocksel_snapshot.html
+# docs/ is the published page — it MUST be committed, that is how Pages serves it
 
 .DS_Store

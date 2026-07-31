@@ -32,7 +32,10 @@ from backend import screener
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 FLOORS = os.path.join(HERE, "data", "floors.json")
-OUT = os.path.join(HERE, "site", "index.html")
+# docs/, not site/: GitHub Pages can serve a folder straight from the repo, which means pushing the
+# built file IS publishing it. That takes GitHub's Actions scheduler out of the loop entirely — it
+# never once fired on its own, across every slot of a full trading day.
+OUT = os.path.join(HERE, "docs", "index.html")
 ET = pytz.timezone("America/New_York")
 NEAR_MAX = 25.0   # widest "within X% of floor" band the page offers
 
