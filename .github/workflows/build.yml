@@ -1,0 +1,53 @@
+name: Build Stocksel
+
+# Runs on every push to main, and can also be triggered manually from the
+# Actions tab on GitHub (Run workflow button) without needing a new commit.
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - run: pip install -r requirements.txt
+
+      - run: pyinstaller --onefile --windowed --name "Stocksel" --add-data "frontend;frontend" app.py
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Stocksel-windows
+          path: dist/Stocksel.exe
+
+  # Apple Silicon (M1/M2/M3/...) — matches most current Macs, including
+  # this project's own dev machine.
+  build-mac-arm64:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - run: pip install -r requirements.txt
+
+      - run: pyinstaller --onefile --windowed --name "Stocksel" --add-data "frontend:frontend" app.py
+
+      # Zip the .app before uploading so the download is a single clean
+      # file (and so file permissions/bundle structure survive intact) —
+      # GitHub Actions artifact downloads are always wrapped in an outer
+      # zip regardless, so a raw folder upload ends up double-zipped.
+      - run: cd dist && zip -r Stocksel-mac-arm64.zip Stocksel.app
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Stocksel-mac-arm64
+          path: dist/Stocksel-mac-arm64.zip

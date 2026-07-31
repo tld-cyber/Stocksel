@@ -1,0 +1,48 @@
+name: Daily floor scan
+
+# The slow half. Weekly bars for ~6,200 names -> data/floors.json, committed so the fast
+# price workflow can read it without re-deriving anything.
+#
+# Once a day is not a compromise: Xlow is measured through LAST FRIDAY and is weekly data, so it
+# genuinely cannot change during a session. Re-scanning every 15 minutes would burn ~2 minutes of
+# compute each time to recompute numbers that are provably identical.
+#
+# 11:10 UTC is ~07:10 ET in summer, ~06:10 in winter — before the open either way. The :10 offset is
+# deliberate: GitHub's scheduled runs queue heavily on the hour and can be delayed 15+ minutes there.
+on:
+  schedule:
+    - cron: '10 11 * * 1-5'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: scan
+  cancel-in-progress: false
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+
+      # Only what the scan needs. pywebview/pyinstaller are for the desktop build and would pull a
+      # GUI toolchain onto a headless runner for nothing.
+      - run: pip install yfinance pandas pytz
+
+      - run: python publish_static.py --scan
+
+      - name: Commit floors
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/floors.json
+          # Nothing to commit is a normal outcome (a holiday, or a re-run), not a failure.
+          git diff --staged --quiet || git commit -m "floors: $(date -u +%Y-%m-%d)"
+          git push
