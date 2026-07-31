@@ -28,6 +28,24 @@ import yfinance as yf
 
 ET = pytz.timezone("America/New_York")
 
+# Sparkline encoding. A year of weekly closes per row would be ~150 KB of JSON floats for the NEAR
+# pool alone; one character per week instead is a quarter of that. Each close is scaled to 0-63
+# against that stock's own range and written as a single character, so the series carries shape
+# only — which is all a sparkline needs, since it has no axis.
+_SPARK_A = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-_"
+
+
+def _spark(closes):
+    """Weekly closes -> encoded string. Empty if there is too little history to draw."""
+    vals = [float(v) for v in closes if v == v and v > 0]
+    if len(vals) < 8:
+        return ""
+    lo, hi = min(vals), max(vals)
+    if hi <= lo:
+        return ""
+    span = hi - lo
+    return "".join(_SPARK_A[int(round((v - lo) / span * 63))] for v in vals)
+
 BAR_CHUNK   = 400        # symbols per yfinance call; 400 measured at ~52 symbols/sec, no throttling
 PRICE_CHUNK = 500        # daily bars are light; larger chunks cut round-trips
 
@@ -41,7 +59,10 @@ SUSPECT_RATIO  = 20.0    # low more than 20x under the year's median close -> di
 JUMP_RATIO     = 4.0     # week-over-week close jump this big is a split, not a move. Measured: real
                          # runs stay under 4x even at +3,000% for the year, splits land at 14-86x.
                          # A real move accumulates; a split teleports.
-TOUCH_BAND     = 1.05    # a week whose low came within 5% of the floor counts as a touch
+TOUCH_BANDS    = (5, 10, 25)  # touches are counted at EACH band the page offers, not one fixed 5%.
+                         # The column follows the selected "within X%" setting, so describing a touch
+                         # as "came within the selected range" is literally true rather than a
+                         # 5%-only number wearing a label that implies otherwise.
 FLAT_RANGE_PCT = 25.0    # a year spanning less than this is a cash-like instrument, not a stock
 
 
@@ -176,17 +197,31 @@ def _rows_from(df, chunk, cutoff):
         ratios = (cl / cl.shift(1)).replace([float("inf")], float("nan")).dropna()
         max_jump = float(ratios.max()) if len(ratios) else 0.0
         when = good.idxmin()
+        _cl = cl.dropna()
+        _sp = _spark(_cl.tolist())
+        try:
+            _si = int(_cl.index.get_loc(when)) if _sp else 0
+        except Exception:
+            _si = 0                     # the low week has no close (rare); fall back to the start
         out.append({
             "sym": s,
             "x":   round(floor, 4),
             "xh":  round(ceiling, 4),
             "xd":  when.strftime("%Y-%m-%d"),
             "hd":  max(0, (now - when.to_pydatetime().replace(tzinfo=timezone.utc)).days),
-            "t":   int((good <= floor * TOUCH_BAND).sum()),
+            # one count per band; "t" stays as the 5% figure so anything reading it keeps working
+            "t":   int((good <= floor * 1.05).sum()),
+            "tb":  {str(b): int((good <= floor * (1 + b / 100.0)).sum()) for b in TOUCH_BANDS},
             "w":   int(len(lo)),
             "v":   int(float(vl.median()) / 5) if len(vl.dropna()) else 0,   # typical DAILY volume
             "f":   bool(ceiling > 0 and (ceiling - floor) / floor * 100 < FLAT_RANGE_PCT),
             "s":   bool((med_close > 0 and floor < med_close / SUSPECT_RATIO) or max_jump >= JUMP_RATIO),
+            "sp":  _sp,                            # 52-week shape, one char per week
+            # The dot marks the week that set Xlow — the lowest INTRADAY low, which is what Xlow,
+            # When and tch all refer to. It is NOT the lowest close: for BNGO those fall in different
+            # weeks (02-02 vs 02-09), so a close-based marker would point at the wrong bar while
+            # every number beside it described another.
+            "si":  _si,
             "y":   round(float(cl.dropna().iloc[-1]), 4) if len(cl.dropna()) else round(floor, 4),
             "d":   0.0,
         })

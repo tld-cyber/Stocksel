@@ -12,7 +12,8 @@
     --accent:#C2721A;
     --band-under-bg:#B4342B; --band-under-fg:#FFFFFF;
     --band-at-bg:#E09A32;    --band-at-fg:#33220A;
-    --band-near-bg:#FAEBD3;  --band-near-fg:#6B4A12;
+    --band-near-bg:#F7D9D5;  --band-near-fg:#8A2019;
+    --spark:#3B6FB0;
   }
   @media (prefers-color-scheme:dark){
     :root{
@@ -22,7 +23,8 @@
       --accent:#E0913C;
       --band-under-bg:#8E2A22; --band-under-fg:#FFE3DF;
       --band-at-bg:#7A5518;    --band-at-fg:#FBD9A0;
-      --band-near-bg:#2C2416;  --band-near-fg:#D8B47C;
+      --band-near-bg:#3A1E1B;  --band-near-fg:#F0A79E;
+      --spark:#6FA3DC;
     }
   }
   *{box-sizing:border-box;}
@@ -37,6 +39,7 @@
   header{display:flex; flex-wrap:wrap; align-items:flex-end; gap:12px 24px;}
   h1{font-size:clamp(19px,3vw,26px); font-weight:700; letter-spacing:-.035em; margin:0;}
   .sub{color:var(--muted); font-size:12px; margin:6px 0 0;}
+  .def{color:var(--ink-2); font-size:12px; margin:7px 0 0; max-width:82ch; line-height:1.55;}
   .stamp{margin-left:auto; text-align:right; font-size:11px; color:var(--muted);
          display:flex; flex-direction:column; gap:3px; align-items:flex-end;}
   .stamp b{color:var(--ink-2); font-weight:600;}
@@ -49,33 +52,43 @@
     font-family:inherit; font-size:12.5px; color:var(--ink); background:var(--ground);
     border:1px solid var(--rule-strong); border-radius:6px; padding:5px 8px;
     font-variant-numeric:tabular-nums;}
-  .filters input{width:70px; text-align:right;}
+  .filters input[type="number"]{width:70px; text-align:right;}
+  .filters input[type="search"]{width:96px; text-align:left;}
   .seg{display:flex; border:1px solid var(--rule-strong); border-radius:6px; overflow:hidden;}
   .seg button{font-family:system-ui,sans-serif; font-size:11.5px; color:var(--ink-2);
     background:var(--ground); border:0; border-right:1px solid var(--rule-strong);
     padding:6px 11px; cursor:pointer; white-space:nowrap;}
   .seg button:last-child{border-right:0;}
-  .seg button[aria-pressed="true"]{background:var(--accent); color:#fff; font-weight:600;}
+  .seg button{letter-spacing:.06em; font-weight:600;}
+  .seg button[aria-pressed="true"]{background:var(--accent); color:#fff;}
   button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--accent); outline-offset:1px;}
   .btn{font-family:system-ui,sans-serif; font-size:11.5px; color:var(--ink-2); background:var(--ground);
     border:1px solid var(--rule-strong); border-radius:6px; padding:6px 11px; cursor:pointer;}
   .btn:hover:not(:disabled){border-color:var(--accent);}
   .btn:disabled{opacity:.5; cursor:default;}
-  .fcount{margin-left:auto; font-size:11.5px; color:var(--muted); font-variant-numeric:tabular-nums;}
+  .fgrp.right{margin-left:auto;}
+  .fcount{ font-size:11.5px; color:var(--muted); font-variant-numeric:tabular-nums;}
 
   .twrap{overflow-x:auto; border:1px solid var(--rule); border-radius:8px; background:var(--surface);}
-  table{border-collapse:collapse; width:100%; min-width:620px;}
+  table{border-collapse:collapse; width:100%; min-width:620px; table-layout:fixed;}
   thead th{background:var(--raised); font-size:10px; letter-spacing:.05em; color:var(--muted);
     font-weight:600; text-align:right; padding:6px 6px; white-space:nowrap;
     border-bottom:1px solid var(--rule-strong);}
   thead th.l{text-align:left;}
+  thead th.spk{width:184px;}
+  td.spk{padding:2px 12px 0 6px;}
+  td.spk svg{display:block;}
+  thead th.px{width:10ch;}    /* longest real value is 8 chars ($391,992), plus a space of air */
+  thead th.w4{width:5.5ch;}   /* When / tch: 3 digits plus a unit at most */
+  thead th.w5{width:7.5ch;}   /* D% and Vol/day */
+  thead th.rk{width:3.2ch;}
   thead th.sep,tbody td.sep{border-left:2px solid var(--rule-strong);}
   tbody td{padding:5px 6px; text-align:right; border-bottom:1px solid var(--rule);
     font-variant-numeric:tabular-nums; white-space:nowrap; font-size:12.5px;}
   tbody tr:last-child td{border-bottom:0;}
   tbody tr:hover td{background:var(--raised);}
-  td.rank{color:var(--muted); font-size:10.5px; width:20px; padding:5px 3px;}
-  td.sym{text-align:left; font-weight:700; letter-spacing:-.02em; padding-left:5px;}
+  td.rank{color:var(--muted); font-size:10.5px; padding:5px 3px;}
+  td.sym{text-align:left; overflow:hidden; text-overflow:ellipsis; font-weight:700; letter-spacing:-.02em; padding-left:5px;}
   td.d{font-weight:700;}
   td.below{color:var(--muted);}
   td.held,td.touch{font-weight:600; color:var(--ink-2); font-size:11.5px;}
@@ -83,15 +96,19 @@
   /* the only hue in the table: how Xnow stands to the floor */
   td.shade{font-weight:700; border-radius:3px;}
   td.shade.under{background:var(--band-under-bg); color:var(--band-under-fg);}
-  td.shade.at   {background:var(--band-at-bg);    color:var(--band-at-fg);}
   td.shade.near {background:var(--band-near-bg);  color:var(--band-near-fg);}
+  td.d.pos{color:var(--band-under-bg);}
+  @media (prefers-color-scheme:dark){ td.d.pos{color:var(--band-under-fg);} }
   sub,sup{font-size:.72em; font-weight:600;}
+  .flag.bad{border-color:var(--band-under-bg); color:var(--band-under-bg);}
   .flag{display:inline-block; margin-left:4px; padding:1px 4px; border-radius:99px;
     font-size:9.5px; font-weight:600; background:var(--raised); color:var(--ink-2);
     border:1px solid var(--rule); font-family:system-ui,sans-serif;}
 
-  .legend{display:flex; flex-wrap:wrap; gap:6px 16px; margin:10px 2px 0;
-    font-size:11px; color:var(--muted);}
+  .legend{margin:12px 2px 0; padding:0 0 0 16px; font-size:11.5px; color:var(--muted);
+    line-height:1.75; columns:2; column-gap:34px;}
+  .legend li{margin:0 0 1px; break-inside:avoid;}
+  @media (max-width:860px){ .legend{columns:1;} }
   .legend b{color:var(--ink-2); font-family:ui-monospace,Menlo,monospace;}
   .status{padding:40px 20px; text-align:center; color:var(--muted); font-size:13px;}
   .status .bar{height:3px; width:180px; margin:14px auto 0; background:var(--rule);
@@ -101,8 +118,10 @@
   @keyframes slide{0%{transform:translateX(-100%)}100%{transform:translateX(350%)}}
   @media (prefers-reduced-motion:reduce){.status .bar i{animation:none; width:100%;}}
   footer{margin-top:24px; padding-top:13px; border-top:1px solid var(--rule);
-    color:var(--muted); font-size:11px; line-height:1.7; max-width:78ch;}
-  footer p{margin:0 0 8px;}
+    color:var(--muted); font-size:11px; line-height:1.7;}
+  footer p{margin:0 0 8px; max-width:none;}
+  footer ul.fdesc{margin:0 0 10px; padding-left:16px; line-height:1.7;}
+  footer ul.fdesc li{margin:0 0 3px;}
 </style>
 </head>
 <body>
@@ -111,54 +130,80 @@
     <div>
       <h1>Stocksel — 52-week floor</h1>
       <p class="sub ui" id="sub">starting…</p>
+      <p class="def ui">X<sub>low</sub> is the lowest price the stock actually traded at during the
+        past 52 weeks — the weekly intraday low, not a closing price. The sparkline traces each
+        week's close, and the red dot marks the week that set that low.</p>
     </div>
     <div class="stamp ui">
-      <span>floors as of <b id="asof">—</b></span>
-      <span>prices <b id="refreshed">—</b> · <span id="src">Yahoo Finance</span></span>
+      <span>prices <b id="refreshed">—</b></span>
     </div>
   </header>
 
   <div class="filters ui">
-    <span class="seg">
-      <button id="mLo" type="button">at / below the floor</button>
-      <button id="mBr" type="button">below the floor</button>
-      <button id="mHi" type="button">furthest above</button>
-    </span>
+    <span class="fgrp"><label for="within">within</label>
+      <select id="within">
+        <option value="5">5% of floor</option>
+        <option value="10" selected>10% of floor</option>
+        <option value="25">25% of floor</option>
+      </select></span>
     <span class="fgrp"><label for="topn">show top</label>
-      <input type="number" id="topn" min="1" max="500" step="1" value="20"></span>
+      <input type="number" id="topn" min="1" max="3000" step="1" value="20"></span>
     <span class="fgrp"><label for="minvol">min vol/day</label>
       <select id="minvol">
         <option value="0">any</option><option value="50000">50k</option>
         <option value="100000" selected>100k</option>
         <option value="500000">500k</option><option value="2000000">2M</option>
       </select></span>
-    <label class="fgrp" style="cursor:pointer"><input type="checkbox" id="hideflag" style="width:auto">
+    <label class="fgrp" style="cursor:pointer"><input type="checkbox" id="hideflag" style="width:auto" checked>
       <span>hide CHECK LOW</span></label>
     <button class="btn" id="refresh" type="button">refresh prices</button>
     <span class="fcount" id="fcount"></span>
+    <span class="fgrp right"><label for="q">ticker</label>
+      <input type="search" id="q" placeholder="search…" autocomplete="off" spellcheck="false"></span>
+    <span class="seg">
+      <button id="mLo" type="button">NEAR</button>
+      <button id="mHi" type="button">FAR</button>
+    </span>
   </div>
 
   <div class="twrap">
     <table>
       <thead><tr>
-        <th class="l">#</th><th class="l">Ticker</th>
-        <th>X<sub>now</sub></th><th>X<sub>high</sub></th>
-        <th class="sep">X<sub>low</sub></th><th>held</th><th>tch</th><th>D%</th>
-        <th>X<sub>low</sub><sup>&minus;5</sup></th><th>X<sub>low</sub><sup>&minus;10</sup></th>
-        <th>X<sub>low</sub><sup>&minus;20</sup></th><th>Vol/day</th>
+        <th class="l rk">#</th><th class="l">Ticker</th>
+        <th class="spk"></th>
+        <th class="px">X<sub>now</sub></th><th class="px">X<sub>high</sub></th>
+        <th class="sep px">X<sub>low</sub></th><th class="w4">When</th><th class="w4">tch</th><th class="w5">D%</th>
+        <th class="px">X<sub>low</sub><sup>&minus;5</sup></th><th class="px">X<sub>low</sub><sup>&minus;10</sup></th>
+        <th class="px">X<sub>low</sub><sup>&minus;20</sup></th><th class="w5">Vol/day</th>
       </tr></thead>
       <tbody id="tb"></tbody>
     </table>
   </div>
   <div class="status" id="status" hidden><span id="stage">scanning…</span><span class="bar"><i></i></span></div>
 
-  <div class="legend ui">
-    <span><b>X<sub>low</sub></b> lowest price of the 52 weeks ending last Friday — this week is
-      excluded, which is why D% can go negative</span>
-    <span><b>held</b> days the floor has stood</span>
-    <span><b>tch</b> weeks price came back within 5% — how often it was defended</span>
-    <span><b>Vol/day</b> typical daily volume (median week ÷ 5)</span>
-  </div>
+  <ul class="legend ui">
+    <li>The <b>sparkline</b> traces the year in weekly closing prices, and the red dot marks the week
+      that set the low. There is no axis; it is there to show the shape of the year at a glance.</li>
+    <li><b>X<sub>now</sub></b> is the current price. It is shaded red while the stock sits inside the
+      selected <b>within</b> range, and shaded darker when it has fallen below the floor entirely.</li>
+    <li><b>X<sub>high</sub></b> is the highest price the stock traded during the same 52 weeks — what
+      it is worth if the floor holds and the stock recovers.</li>
+    <li><b>X<sub>low</sub></b> is the lowest price it traded during the 52 weeks ending last Friday.
+      The current week is deliberately excluded, which is what allows the price to fall through the
+      floor and D% to go negative.</li>
+    <li><b>When</b> is the number of days since that low was set. A floor months old has held; one set
+      days ago belongs to a stock that is probably still falling.</li>
+    <li><b>tch</b> counts the weeks in which the price came back inside the selected range. It is the
+      honest measure of whether a level means anything: a floor touched once was never defended, while
+      one touched a dozen times is a level buyers keep stepping in at.</li>
+    <li><b>D%</b> is how far X<sub>now</sub> sits above X<sub>low</sub>, shown in red at or above the
+      floor. A negative value means the stock has broken through it.</li>
+    <li><b>X<sub>low</sub><sup>&minus;5</sup></b>, <b>X<sub>low</sub><sup>&minus;10</sup></b> and
+      <b>X<sub>low</sub><sup>&minus;20</sup></b> are the prices 5, 10 and 20% below the floor. They are
+      downside markers — where a breakdown goes next, not targets to buy at.</li>
+    <li><b>Vol/day</b> is the typical daily volume, taken as the median week divided by five rather
+      than a single session, which is too easily distorted by whatever news moved the stock.</li>
+  </ul>
 
   <footer class="ui">
     <p><b>Splits are adjusted for — but not reliably.</b> Prices are split-adjusted, so a reverse
@@ -166,6 +211,33 @@
     between consecutive weeks, which no real move produces, and the row is tagged <b>CHECK LOW</b>.</p>
     <p><b>BROKE</b> = trading under a floor that had held: mid-collapse, not near support.
     <b>52W</b> = a recent listing whose window is shorter. <b>THIN</b> = under 50k shares a day.</p>
+    <p><b>The controls above the table</b> — every one narrows what is listed; none of them changes
+    a stock's numbers.</p>
+
+    <ul class="fdesc">
+      <li><b>NEAR / FAR</b> — which end of the distribution. NEAR lists stocks at, near, or through
+        the floor; FAR lists those furthest above it. Names trading under the floor stay in NEAR,
+        tagged <b>BROKE</b> and shaded darker.</li>
+      <li><b>ticker</b> — jumps straight to one stock. It deliberately ignores the <b>within</b>
+        band, so searching a name that sits far above its floor still finds it rather than returning
+        nothing.</li>
+      <li><b>within</b> — the range this page is about: a stock qualifies while X<sub>now</sub> is no
+        more than that far above X<sub>low</sub>. It drives three things at once — which rows are
+        listed, the red shading, and <b>tch</b>, which counts the weeks price came back inside that
+        same range. Widening the band therefore raises the touch count. Nothing is fixed at 5%.</li>
+      <li><b>show top</b> — how many rows to draw, in the current sort order.</li>
+      <li><b>min vol/day</b> — drops names that barely trade. Below roughly 100k shares a day a D%
+        is arithmetic rather than demand, since a handful of shares can move the price.</li>
+      <li><b>hide CHECK LOW</b> — on by default. Hides rows whose price history is on a different
+        share basis to their current price, usually an unadjusted split, where D% cannot be trusted.</li>
+    </ul>
+
+    <p>Rows whose current price exceeds their own 52-week high by more than half are removed outright
+    rather than flagged: that is arithmetically impossible from one dataset, so the row would sort to
+    the top of FAR on numbers that mean nothing.</p>
+
+    <p>Data retrieved from Yahoo Finance.</p>
+
     <p>Already excluded: bad ticks, zero-volume phantom bars, warrants and units, ETFs, and
     instruments whose whole year spans under 25%. Screening only — no scores, no recommendation.</p>
   </footer>
@@ -179,15 +251,36 @@ let ROWS = [], META = null, mode = "lo", timer = null;
 // far-above names are simply the tail of one continuous list.
 let ROWS_HI = null;
 
-const money = v => v >= 1000 ? v.toLocaleString("en-US",{maximumFractionDigits:0})
-                 : (Math.round(v*100)/100).toFixed(2).replace(/\.00$/,"");
+// Prices carry a $; D%, held, tch and Vol/day are not prices and deliberately do not.
+const money = v => "$" + (v >= 1000 ? v.toLocaleString("en-US",{maximumFractionDigits:0})
+                 : (Math.round(v*100)/100).toFixed(2).replace(/\.00$/,""));
 const vol = v => v >= 1e9 ? (v/1e9).toFixed(1)+"B" : v >= 1e6 ? (v/1e6).toFixed(1)+"M"
                : v >= 1e3 ? Math.round(v/1e3).toLocaleString("en-US")+"k" : v.toLocaleString("en-US");
 const pct = d => (Math.abs(d) >= 1000 ? Math.round(d).toLocaleString("en-US") : d.toFixed(1)) + "%";
 // 0.05 not 0 for the "at" band: D% is rounded to two places, so a stock resting exactly on its
 // floor reads 0.01-0.04, and a strict equality test would shade almost nothing.
-const shade = d => d < 0 ? ' class="shade under"' : d <= 0.05 ? ' class="shade at"'
-                 : d <= 5 ? ' class="shade near"' : '';
+// Touches counted at the band currently selected — the data carries one count per band, so this
+// is the real number for that range rather than a fixed-5% figure relabelled.
+const tch = r => (r.tb && r.tb[$("within").value] !== undefined) ? r.tb[$("within").value] : r.t;
+// Sparkline: 52 weekly closes, decoded from one character each. Deliberately axis-free — it is
+// there to show the shape of the year and where the low sits within it, not to be read off.
+const _A = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-_";
+function spark(r){
+  if (!r.sp || r.sp.length < 8) return "";
+  const n = r.sp.length, W = 166, H = 24, pad = 3;
+  const x = i => (i / (n - 1)) * W;
+  const y = v => H - pad - (v / 63) * (H - pad * 2);
+  let pts = "";
+  for (let i = 0; i < n; i++) pts += x(i).toFixed(1) + "," + y(_A.indexOf(r.sp[i])).toFixed(1) + " ";
+  const li = Math.min(r.si || 0, n - 1);
+  return '<svg width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '" aria-hidden="true">'
+       + '<polyline points="' + pts.trim() + '" fill="none" stroke="var(--spark)" stroke-width="1.3" '
+       + 'stroke-linejoin="round" stroke-linecap="round"/>'
+       + '<circle cx="' + x(li).toFixed(1) + '" cy="' + y(_A.indexOf(r.sp[li])).toFixed(1) + '" r="2.6" '
+       + 'fill="var(--band-under-bg)"/></svg>';
+}
+const shade = d => d < 0 ? ' class="shade under"'
+                 : d <= +$("within").value ? ' class="shade near"' : '';
 
 function view(){
   const minV = +$("minvol").value, hideF = $("hideflag").checked;
@@ -195,11 +288,19 @@ function view(){
   // far-above names directly after the near-the-floor ones, producing a 4.4% -> 206% cliff mid-table
   // with nothing to indicate the middle of the distribution was missing entirely.
   const src = (mode === "hi" && ROWS_HI) ? ROWS_HI : ROWS;
-  let rows = src.filter(r => !r.f && r.v >= minV && (!hideF || !r.s));
-  if (mode === "br") rows = rows.filter(r => r.d < 0);
-  if (mode === "hi") rows = rows.slice().sort((a,b) => b.d - a.d);
-  else if (ROWS_HI) rows = rows.filter(r => r.d <= 100);   // static build: the head only reaches so far
-  return rows;
+  const q = $("q").value.trim().toUpperCase();
+  // A share-basis mismatch is not a judgement call — the numbers are arithmetically incomparable,
+  // so the row is dropped rather than flagged and left in the ranking where it sorts to the top.
+  let rows = src.filter(r => !r.f && r.v >= minV && !(r.xh > 0 && r.y > r.xh * 1.5)
+                             && (!hideF || !r.s));
+  // A ticker search means "find me this stock" — honour it over the distance band, or searching for
+  // a name that sits 30% above its floor would silently return nothing and look broken.
+  if (q) return rows.filter(r => r.sym.startsWith(q));
+  if (mode === "hi") return rows.slice().sort((a,b) => b.d - a.d);
+  // The band is a STATED rule, not wherever the shipped slice happens to end. Cutting by row count
+  // put the ceiling at whatever 900 names reached that day (4.4% on the first build) — invisible,
+  // arbitrary, and different tomorrow.
+  return rows.filter(r => r.d <= +$("within").value);
 }
 
 function render(){
@@ -208,7 +309,13 @@ function render(){
   const shown = rows.slice(0, n);
   $("fcount").textContent = rows.length.toLocaleString("en-US") + " pass filters";
   $("tb").innerHTML = shown.map((r,i) => {
+    // Xnow above the year's ceiling means the price and the history are on different share bases:
+    // a split the source did not apply to its own weekly bars. A genuine new 52-week high also puts
+    // Xnow above Xhigh, but by a few percent, not a multiple — hence the 1.5x margin. DFNS reverse
+    // split mid-week and rendered $84.98 against a $15.59 ceiling with a 202,233% D%.
+    const basisMismatch = r.xh > 0 && r.y > r.xh * 1.5;
     let f = "";
+    if (basisMismatch) f += '<span class="flag bad">SPLIT?</span>';
     if (r.d < 0)     f += '<span class="flag">BROKE</span>';
     if (r.s)         f += '<span class="flag">CHECK LOW</span>';
     if (r.w < 52)    f += '<span class="flag">' + r.w + 'W</span>';
@@ -216,28 +323,27 @@ function render(){
     return '<tr>'
       + '<td class="rank">' + (i+1) + '</td>'
       + '<td class="sym">' + r.sym + f + '</td>'
+      + '<td class="spk">' + spark(r) + '</td>'
       + '<td' + shade(r.d) + '>' + money(r.y) + '</td>'
       + '<td>' + money(r.xh) + '</td>'
       + '<td class="sep">' + money(r.x) + '</td>'
-      + '<td class="held">' + r.hd + '</td>'
-      + '<td class="touch' + (r.t <= 1 ? ' once' : '') + '">' + r.t + '</td>'
-      + '<td class="d">' + pct(r.d) + '</td>'
+      + '<td class="held">' + r.hd + 'd</td>'
+      + '<td class="touch' + (tch(r) <= 1 ? ' once' : '') + '">' + tch(r) + '</td>'
+      + '<td class="d' + (r.d >= 0 ? ' pos' : '') + '">' + pct(r.d) + '</td>'
       + '<td class="below">' + money(r.x * 0.95) + '</td>'
       + '<td class="below">' + money(r.x * 0.90) + '</td>'
       + '<td class="below">' + money(r.x * 0.80) + '</td>'
       + '<td>' + vol(r.v) + '</td>'
       + '</tr>';
-  }).join("") || '<tr><td colspan="12" style="text-align:center;padding:34px;color:var(--muted)">'
+  }).join("") || '<tr><td colspan="13" style="text-align:center;padding:34px;color:var(--muted)">'
                + 'Nothing passes those filters.</td></tr>';
 }
 
 function setMeta(m, refreshed){
   if (m){
     META = m;
-    $("sub").textContent = m.scanned.toLocaleString("en-US") + " listed common stocks · "
-      + m.below.toLocaleString("en-US") + " trading under a floor set before this week";
-    $("asof").textContent = m.floor_asof;
-    $("src").textContent = m.source;
+    $("sub").textContent = m.scanned.toLocaleString("en-US") + " listed common stocks"
+      + "\u2003\u00b7\u2003" + "52-week data up to " + m.floor_asof;
   }
   if (refreshed) $("refreshed").textContent = refreshed;
 }
@@ -267,11 +373,11 @@ async function refreshPrices(){
   btn.disabled = false; btn.textContent = "refresh prices";
 }
 
-["topn","minvol","hideflag"].forEach(id => $(id).addEventListener("input", render));
-[["mLo","lo"],["mBr","br"],["mHi","hi"]].forEach(([id,m]) => $(id).addEventListener("click", () => {
+["topn","minvol","hideflag","within","q"].forEach(id => $(id).addEventListener("input", render));
+[["mLo","lo"],["mHi","hi"]].forEach(([id,m]) => $(id).addEventListener("click", () => {
   mode = m;
-  ["mLo","mBr","mHi"].forEach(o => $(o).setAttribute("aria-pressed",
-    String(o === ({lo:"mLo",br:"mBr",hi:"mHi"})[m])));
+  ["mLo","mHi"].forEach(o => $(o).setAttribute("aria-pressed",
+    String(o === ({lo:"mLo",hi:"mHi"})[m])));
   render();
 }));
 $("refresh").addEventListener("click", refreshPrices);

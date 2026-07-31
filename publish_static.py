@@ -34,6 +34,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 FLOORS = os.path.join(HERE, "data", "floors.json")
 OUT = os.path.join(HERE, "site", "index.html")
 ET = pytz.timezone("America/New_York")
+NEAR_MAX = 25.0   # widest "within X% of floor" band the page offers
 
 BOOTSTRAP = """$("status").hidden = false;
 load();
@@ -41,9 +42,29 @@ load();
 timer = setInterval(refreshPrices, 5 * 60 * 1000);"""
 
 
+# A scan that comes back far smaller than the last good one was throttled, not accurate. Yahoo rate
+# limits after repeated full scans and yfinance reports it per-chunk, so the run "succeeds" with a
+# fraction of the universe. Overwriting good floors with that is worse than not scanning at all —
+# it silently narrows the whole page. Observed: 4,621 names against a normal 6,191.
+MIN_KEEP_RATIO = 0.9
+
+
 def do_scan():
     print("scanning (no API key — Yahoo + Nasdaq's public symbol file)…", flush=True)
     rows, meta = screener.scan(lambda s: print(f"  {s}", flush=True) if s else None)
+
+    prev_n = 0
+    if os.path.exists(FLOORS):
+        try:
+            prev = json.load(open(FLOORS))
+            prev_n = len(prev.get("rows", []))
+        except Exception:
+            prev = None
+    if prev_n and len(rows) < prev_n * MIN_KEEP_RATIO:
+        print(f"REFUSING to overwrite: scan returned {len(rows):,} names against {prev_n:,} last time "
+              f"({len(rows)/prev_n:.0%}). Almost certainly rate-limited — keeping the existing floors.")
+        return prev["rows"], prev["meta"]
+
     os.makedirs(os.path.dirname(FLOORS), exist_ok=True)
     with open(FLOORS, "w") as f:
         json.dump({"rows": rows, "meta": meta}, f, separators=(",", ":"))
@@ -82,7 +103,12 @@ def build(rows, meta):
     # so it read as corrupt data rather than as the omission it was — every name between those two
     # values simply is not in the file. Separate pools make the seam impossible: each view draws
     # only from the end it is actually about.
-    lo, hi = rows[:900], rows[-300:]
+    # Cut by a STATED distance, not a row count. rows[:900] put the ceiling at wherever 900 names
+    # happened to reach — 4.4% on the first build — which is invisible, arbitrary, and different
+    # tomorrow. NEAR_MAX must cover the widest band the page offers (25%), or selecting it would
+    # show nothing beyond whatever was shipped and look like missing data.
+    lo = [r for r in rows if r["d"] <= NEAR_MAX]
+    hi = rows[-300:]
     meta = dict(meta, shown=len(lo) + len(hi))
     html = open(os.path.join(HERE, "frontend", "index.html"), encoding="utf-8").read()
     assert BOOTSTRAP in html, "frontend bootstrap block moved — update BOOTSTRAP to match"
