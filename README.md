@@ -14,7 +14,24 @@ python3 publish_static.py --scan          # floors only -> data/floors.json
 python3 -m backend.server                 # backend alone, no window
 ```
 
-**Why a local backend and not just a web page:** Yahoo sends no CORS headers, so a browser cannot read its response at all — it fetches, then throws the answer away. Python can. That one fact drove the whole shape. Alpaca *does* publish CORS headers and could be called from a page directly, but only with a key embedded in it.
+## Why a local backend and not just a web page
+
+Because of **CORS — Cross-Origin Resource Sharing**, which is a rule browsers enforce, not a lock on the data.
+
+When a page on one website asks a *different* website for data, the browser fetches it, then checks whether that other site included a header saying *"pages from other sites may read this."* If the header is missing, the browser throws the answer away and reports a failure to the page. The data arrived; the browser simply refused to hand it over.
+
+It exists for a good reason: without it, any page you happened to visit could quietly make requests to your bank or your email — carrying your logged-in cookies — and read the results.
+
+Measured directly rather than taken from documentation:
+
+| | sends the header? | can a browser read it? |
+|---|---|---|
+| **Yahoo** (`query1.finance.yahoo.com`) | no | **no** — returns 200, browser discards it |
+| **Alpaca** (`data.alpaca.markets`) | yes (`Access-Control-Allow-Origin: *`) | yes, but only with a key inside the page |
+
+**Python is not a browser, so the rule does not apply to it at all.** That single fact drove the entire shape of v5: a page cannot fetch from Yahoo, Python can, therefore the fetching happens server-side and the page only ever displays what was already gathered. It is also what removes the key requirement — the alternative, calling Alpaca from the page, would mean shipping a credential inside a public file.
+
+The other way round is a **relay**: a server you own that fetches on the page's behalf and adds the permission header itself. That is what the earlier World News Globe project used (a Cloudflare Worker) before abandoning it — it solves the problem by adding a middleman, where moving the fetch into Python removes the middleman entirely.
 
 ---
 
