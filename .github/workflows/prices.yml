@@ -3,9 +3,13 @@ name: Refresh prices
 # The fast half. Reads the committed floors, fetches current prices for the two ends that the page
 # actually renders, rebuilds the HTML and deploys it to Pages. ~1 minute per run.
 #
-# Commits the built page. That does add a commit per refresh, which is the price of not depending on
-# GitHub's Actions scheduler — it never fired once across a full trading day here, while every manual
-# and local run worked. The Mac's launchd job pushes the same file, so either trigger publishes.
+# Commits the built page. Pages serves docs/ straight from the branch, so the commit IS the publish —
+# no artifact upload, no deploy step.
+#
+# Triggered externally by cron-job.org every 15 minutes during market hours, NOT by the schedule
+# below. GitHub's own scheduler ran between 7 minutes and 6 hours late across a full trading day
+# here, which is unusable for prices. The cron entry is left as a backstop: if the external trigger
+# ever stops, an erratic refresh still beats none.
 #
 # Schedule covers 13:00-20:59 UTC Mon-Fri, which is 09:00-16:59 ET in summer and 08:00-15:59 in
 # winter — the market session under either, since cron has no notion of daylight saving. The odd
