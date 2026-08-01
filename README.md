@@ -1,4 +1,13 @@
-# Stocksel — 52-week floor
+# Stocksel v5 — 52-week floor
+
+Lives at `Trading/V5`. It is the same question `V4` asks, rebuilt on a different engine: Yahoo
+instead of Alpaca, so it needs **no API key from anyone**. `V4` is kept as the Alpaca reference.
+
+Published at **https://tld-cyber.github.io/Stocksel/**, refreshed every 15 minutes on weekdays
+9:00–16:45 ET by an external trigger (cron-job.org) calling the `Refresh prices` workflow. GitHub's
+own scheduler is left in the workflow as a backstop — measured here running between 7 minutes and
+6 hours late, which is unusable for prices on its own.
+
 
 A desktop app that ranks every listed US common stock by how it stands against its 52-week floor.
 **No API key. No signup. No account.** Market data comes from Yahoo, which requires none.
@@ -65,7 +74,8 @@ On Windows, `--add-data` uses a semicolon: `--add-data "frontend;frontend"`.
 Output lands in `dist/`. That single file is what you share — double-click, window opens, no
 terminal, no install, nothing to configure.
 
-`.github/workflows/build.yml` builds **Windows and Apple Silicon Mac** on every push to `main`.
+`.github/workflows/prices.yml` rebuilds and commits the page; `scan.yml` refreshes the floors each
+morning. `build.yml` builds **Windows and Apple Silicon Mac** desktop apps on every push to `main`.
 Intel Mac is deliberately not built — add a job only if someone on `x86_64` actually needs it,
 since PyInstaller cannot cross-compile and an arm64 build will not run there.
 
