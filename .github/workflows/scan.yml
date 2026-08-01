@@ -34,7 +34,7 @@ jobs:
 
       # Only what the scan needs. pywebview/pyinstaller are for the desktop build and would pull a
       # GUI toolchain onto a headless runner for nothing.
-      - run: pip install yfinance pandas pytz
+      - run: pip install -r requirements.txt
 
       - run: python publish_static.py --scan
 
@@ -42,7 +42,7 @@ jobs:
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add data/floors.json
+          git add data/floors.json.gz
           # Nothing to commit is a normal outcome (a holiday, or a re-run), not a failure.
           git diff --staged --quiet || git commit -m "floors: $(date -u +%Y-%m-%d)"
           git push

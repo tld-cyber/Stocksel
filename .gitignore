@@ -12,7 +12,11 @@ build/
 dist/
 *.spec
 
-# docs/ and data/floors.json are BOTH committed on purpose: Pages serves docs/ straight from the
-# branch, and the fast price job reads floors.json rather than re-scanning.
+# docs/ is BUILT, not committed — Actions uploads it straight to Pages. Committing a 685 KB page on
+# every refresh grew the repo ~4.5 GB a year, and git never forgets a version.
+docs/
+
+# data/floors.json.gz IS committed: the fast price job reads it instead of re-scanning. Gzipped
+# because it is written daily and kept forever.
 
 .DS_Store

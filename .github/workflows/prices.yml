@@ -3,8 +3,8 @@ name: Refresh prices
 # The fast half. Reads the committed floors, fetches current prices for the two ends that the page
 # actually renders, rebuilds the HTML and deploys it to Pages. ~1 minute per run.
 #
-# Commits the built page. Pages serves docs/ straight from the branch, so the commit IS the publish —
-# no artifact upload, no deploy step.
+# Builds the page and deploys it straight to Pages as an artifact — nothing is committed, so the
+# repository does not grow by 685 KB on every refresh.
 #
 # Triggered externally by cron-job.org every 15 minutes during market hours, NOT by the schedule
 # below. GitHub's own scheduler ran between 7 minutes and 6 hours late across a full trading day
@@ -25,7 +25,9 @@ on:
     types: [completed]
 
 permissions:
-  contents: write
+  contents: read
+  pages: write
+  id-token: write
 
 # Never let two deploys race; skip a queued run rather than stack them, since the next one is only
 # 15 minutes away and would carry newer prices anyway.
@@ -36,6 +38,9 @@ concurrency:
 jobs:
   refresh:
     runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
 
@@ -44,20 +49,19 @@ jobs:
           python-version: '3.11'
           cache: pip
 
-      - run: pip install yfinance pandas pytz
+      - run: pip install -r requirements.txt
 
       # --prices reads data/floors.json. If the daily scan has never run, it falls back to a full
       # scan on its own rather than failing — the first deploy after setup still produces a page.
       - run: python publish_static.py --prices
 
-      # Commit the built page rather than deploying an artifact: Pages serves docs/ from the branch,
-      # so a push IS the publish. Same mechanism the Mac's launchd job uses, so whichever trigger
-      # fires, the result is identical.
-      - name: Commit the page
-        run: |
-          git config user.name  "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add docs/
-          git diff --staged --quiet || git commit -m "prices $(date -u '+%Y-%m-%d %H:%M UTC')"
-          git pull --rebase --autostash -q origin main || true
-          git push origin main
+      # Deploy the artifact instead of committing it. Committing was a workaround from when GitHub's
+      # scheduler was the only trigger and proved unreliable; with an external trigger that is no
+      # longer needed. It matters because git keeps every version forever — a 685 KB page committed
+      # 27 times a day is roughly 4.5 GB a year of repository growth for a file nobody reads twice.
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs
+      - id: deploy
+        uses: actions/deploy-pages@v4

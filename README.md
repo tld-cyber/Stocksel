@@ -2,16 +2,15 @@
 
 **Role:** the same positional screen as **`../V4`** — *where does this stock sit against its own 52-week floor?* — rebuilt so that **nobody needs an API key**. That is the entire reason v5 exists: Alpaca requires a key per person, and handing the tool to someone else meant either sharing credentials or asking them to sign up. Yahoo needs neither.
 
-Two ways to run it: a **desktop app** (native window, live prices) and a **published web page** at **https://tld-cyber.github.io/Stocksel/** that anyone can open with no install, no key, no account.
+Output is a **published web page** at **https://tld-cyber.github.io/Stocksel/** that anyone can open with no install, no key, no account.
 
 This directory is its own git repo — `github.com/tld-cyber/Stocksel`, public — and the only part of this project on the web.
 
 ```bash
-./run.sh                                  # desktop app (first run makes a venv)
+pip install -r requirements.txt
 python3 publish_static.py                 # full scan + prices -> docs/index.html
-python3 publish_static.py --prices        # prices only, ~1 min (reads data/floors.json)
-python3 publish_static.py --scan          # floors only -> data/floors.json
-python3 -m backend.server                 # backend alone, no window
+python3 publish_static.py --prices        # prices only, ~1 min (reads data/floors.json.gz)
+python3 publish_static.py --scan          # floors only -> data/floors.json.gz
 ```
 
 ## Why a local backend and not just a web page
@@ -60,17 +59,16 @@ Same columns as V4 — `Xlow`, `Xnow`, `Xhigh`, `D%`, `When`, `tch`, and the `Xl
 
 ## Outputs
 
-- **`docs/index.html`** — the published page. Self-contained, zero external requests, ~700 KB. **Pages serves `docs/` straight from the branch, so committing it IS publishing it** — no artifact upload, no deploy step.
-- **`data/floors.json`** — the weekly half of the data, committed on purpose so the fast price job can skip the scan.
-- **Desktop app** — `app.py` opens a pywebview window over a local Flask backend, the same pattern as the World News Globe project. Refreshes prices on its own timer, no schedule involved.
+- **`docs/index.html`** — the published page. Self-contained, zero external requests, ~700 KB. **Built, never committed**: Actions uploads it straight to Pages. Committing it on every refresh grew the repo by roughly 4.5 GB a year, since git keeps every version forever.
+- **`data/floors.json.gz`** — the weekly half of the data, committed on purpose so the fast price job can skip the scan. Gzipped: it is rewritten daily and kept forever, and JSON compresses about three to one.
 
 **The two halves have different clocks.** `scan()` is slow (~2–3 min) and produces weekly data that cannot change during a session. `refresh()` takes seconds and updates only `Xnow`. Splitting them is what makes a 15-minute refresh affordable — re-deriving floors every quarter hour would recompute numbers that are provably identical.
 
 ## Scheduling
 
-**cron-job.org** calls the `Refresh prices` workflow every 15 minutes, weekdays 09:00–16:45 ET, using a **fine-grained token scoped to Actions on this repo alone**. GitHub then fetches, rebuilds, commits, and Pages serves it — about three minutes end to end.
+**cron-job.org** calls the `Refresh prices` workflow every 15 minutes, weekdays 09:00–16:45 ET, using a **fine-grained token scoped to Actions on this repo alone**. GitHub then fetches, rebuilds and deploys straight to Pages — about three minutes end to end, with nothing committed.
 
-**GitHub's own `schedule:` is a backstop only.** Measured across a full trading day it ran between **7 minutes and 6 hours late** — fine for a nightly job, unusable for prices. It stays in the workflow because it commits the identical file, so it can only help.
+**GitHub's own `schedule:` is a backstop only.** Measured across a full trading day it ran between **7 minutes and 6 hours late** — fine for a nightly job, unusable for prices. It stays in the workflow because it produces the identical page, so it can only help.
 
 An open browser tab cannot update itself — the data is baked into the file. So the page polls with a `HEAD` request every 3 minutes and offers a **reload** when the deployed file has genuinely changed, rather than reloading under someone mid-read. There is also an optional auto-refresh (15 / 30 min); every filter is persisted, so a reload comes back where you were.
 

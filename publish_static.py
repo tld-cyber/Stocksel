@@ -20,6 +20,7 @@ That split is what makes a 15-minute refresh schedule affordable: re-scanning 6,
 quarter hour to update a price would be ~2 minutes of compute each time, against ~1 for prices alone,
 and would re-derive floors that provably cannot have changed.
 """
+import gzip
 import json
 import os
 import sys
@@ -31,7 +32,9 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from backend import screener
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-FLOORS = os.path.join(HERE, "data", "floors.json")
+# Gzipped: this file is committed every day and git keeps every version forever. As plain JSON that
+# is ~1.3 MB a day, ~325 MB a year, for data that compresses roughly five to one.
+FLOORS = os.path.join(HERE, "data", "floors.json.gz")
 # docs/, not site/: GitHub Pages can serve a folder straight from the repo, which means pushing the
 # built file IS publishing it. That takes GitHub's Actions scheduler out of the loop entirely — it
 # never once fired on its own, across every slot of a full trading day.
@@ -59,7 +62,7 @@ def do_scan():
     prev_n = 0
     if os.path.exists(FLOORS):
         try:
-            prev = json.load(open(FLOORS))
+            prev = json.load(gzip.open(FLOORS, "rt", encoding="utf-8"))
             prev_n = len(prev.get("rows", []))
         except Exception:
             prev = None
@@ -69,7 +72,7 @@ def do_scan():
         return prev["rows"], prev["meta"]
 
     os.makedirs(os.path.dirname(FLOORS), exist_ok=True)
-    with open(FLOORS, "w") as f:
+    with gzip.open(FLOORS, "wt", encoding="utf-8") as f:
         json.dump({"rows": rows, "meta": meta}, f, separators=(",", ":"))
     print(f"wrote {FLOORS} — {meta['scanned']:,} names, floors as of {meta['floor_asof']}")
     return rows, meta
@@ -79,7 +82,7 @@ def load_floors():
     if not os.path.exists(FLOORS):
         print("no floors.json yet — running a full scan first")
         return do_scan()
-    with open(FLOORS) as f:
+    with gzip.open(FLOORS, "rt", encoding="utf-8") as f:
         d = json.load(f)
     return d["rows"], d["meta"]
 
